@@ -10,6 +10,9 @@ import holidays
 import requests as requests
 from loguru import logger
 
+from table import Table
+from scrapy.http import TextResponse
+
 logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="DEBUG")
 # logger.add(sys.stdout, colorize=True, format="<green>{time}</green> <level>{message}</level>")
 logger.add("ndfdownload.log", rotation="30 MB")
@@ -76,25 +79,37 @@ class ndf:
             df = joblib.load(cachefile_with_path)
             logger.info(f'Loaded {source} DATA from cache {cachefile_with_path}')
         except (IOError, OSError):
-            logger.info(f'Downloading to {cache_raw_file} from {url}')
-            r = requests.get(url, headers=self.headers, verify=False)
-            logger.info(f'download size: {len(r.content)} ')
-            with open(cache_raw_file, 'wb') as f:
-                f.write(r.content)
-
-            if file_extention == 'csv':
-                logger.debug("Convert CSV to pandas dataframe")
-                df = pd.read_csv(cache_raw_file, sep='|')
-                logger.debug("Creating cache...")
+            if file_extention == 'html':
+                logger.info(f'Downloading to {cache_raw_file} from {url}')
+                r = requests.get(url)
+                response = TextResponse(r.url, body=r.text, encoding="utf-8")
+                logger.debug("Convert HTML to pandas dataframe")
+                table = Table(response.xpath('(//table)[1]'))
+                tullet = table.as_dicts()
+                df = pd.DataFrame(tullet)
+                # Cache
                 joblib.dump(df, cachefile_with_path)
                 logger.info(f'{source} data success cached at {cachefile_with_path}')
+            else:
+                logger.info(f'Downloading to {cache_raw_file} from {url}')
+                r = requests.get(url, headers=self.headers, verify=False)
+                logger.info(f'download size: {len(r.content)} ')
+                with open(cache_raw_file, 'wb') as f:
+                    f.write(r.content)
 
-            elif file_extention == 'xls':
-                logger.debug("Convert XLS to pandas dataframe")
-                df = pd.read_excel(cache_raw_file)
-                logger.debug("Creating cache...")
-                joblib.dump(df, cachefile_with_path)
-                logger.info(f'{source} data success cached at {cachefile_with_path}')
+                if file_extention == 'csv':
+                    logger.debug("Convert CSV to pandas dataframe")
+                    df = pd.read_csv(cache_raw_file, sep='|')
+                    logger.debug("Creating cache...")
+                    joblib.dump(df, cachefile_with_path)
+                    logger.info(f'{source} data success cached at {cachefile_with_path}')
+
+                elif file_extention == 'xls':
+                    logger.debug("Convert XLS to pandas dataframe")
+                    df = pd.read_excel(cache_raw_file)
+                    logger.debug("Creating cache...")
+                    joblib.dump(df, cachefile_with_path)
+                    logger.info(f'{source} data success cached at {cachefile_with_path}')
 
         return cachefile_with_path
 
@@ -128,6 +143,33 @@ class ndf:
 
         df = self._download('BGC', URL_BGC, 'xls')
 
+    def download_prebontullet(self, date=None):
+        URL_tulletprebon = "https://www.tullettprebon.com/swap-execution-facility/daily-activity-summary.aspx"
+
+        df = self._download('tulletprebon', URL_tulletprebon, 'html')
+
+        return df
+
+    def download_gfi(self, date=None):
+        date_format = '%Y-%m-%d'
+        if date == None:
+            gfi_date_format = None
+            if (self.is_yesterday_weekday()):
+                gfi_date_format = datetime.today() - timedelta(days=1)
+            else:
+                gfi_date_format = datetime.today() - timedelta(days=3)
+
+            gfi_date_format = gfi_date_format.strftime(date_format)
+        else:
+            gfi_date_format = datetime.strptime(date, date_format).strftime('%Y-%m-%d')
+
+        # "http://www.gfigroup.com/doc/sef/marketdata/2023-01-20_daily_trade_data.xls"
+        URL_GFI = f"http://www.gfigroup.com/doc/sef/marketdata/{gfi_date_format}_daily_trade_data.xls"
+
+        df = self._download('gfi', URL_GFI, 'xls')
+
+        return df
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -137,6 +179,9 @@ if __name__ == '__main__':
 
     n.download_bgc()
     n.download_tradition()
+    n.download_prebontullet()
+    n.download_gfi()
+
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
