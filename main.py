@@ -170,6 +170,12 @@ class ndf:
 
         return df
 
+    def download_all(self):
+        self.download_bgc()
+        self.download_tradition()
+        self.download_prebontullet()
+        self.download_gfi()
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -177,10 +183,8 @@ if __name__ == '__main__':
 
     n = ndf()
 
-    n.download_bgc()
-    n.download_tradition()
-    n.download_prebontullet()
-    n.download_gfi()
+    n.download_all()
+
 
 
 
