@@ -10,6 +10,7 @@ import holidays
 import requests as requests
 from loguru import logger
 
+from datamining import tradition_calc
 from table import Table
 from scrapy.http import TextResponse
 
@@ -22,6 +23,10 @@ class ndf:
     def __init__(self):
         self.year_size = 325
         self.data_dir_name = 'DATA'
+        self.BGC_result = None
+        self.TRADITION_result = None
+        self.TULLETPREBON_result = None
+        self.GFI_result = None
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/50.0.2661.102 Safari/537.36'}
@@ -125,9 +130,9 @@ class ndf:
         # https://www.traditionsef.com/dailyactivity/SEF16_MKTDATA_TFSU_20230123.csv
         URL_tradition = f"https://www.traditionsef.com/dailyactivity/SEF16_MKTDATA_TFSU_{tradition_date_format}.csv"
 
-        df = self._download('TRADITION', URL_tradition, 'csv')
+        file = self._download('TRADITION', URL_tradition, 'csv')
 
-        return df
+        return file
 
     def download_bgc(self, date=None):
         bgc_date_format = None
@@ -138,7 +143,7 @@ class ndf:
             bgc_date_format = datetime.today() - timedelta(days=3)
             bgc_date_format = bgc_date_format.strftime('%Y%m%d')
 
-        #URL_BGC = f"http://dailyactprod.bgcsef.com/SEF/DailyAct/DailyAct_{bgc_date_format}-001.xls"
+        # URL_BGC = f"http://dailyactprod.bgcsef.com/SEF/DailyAct/DailyAct_{bgc_date_format}-001.xls"
         URL_BGC = f"http://dailyactprod.bgcsef.com/SEF/DailyAct/DailyAct_{bgc_date_format}.xls"
 
         df = self._download('BGC', URL_BGC, 'xls')
@@ -172,7 +177,8 @@ class ndf:
 
     def download_all(self):
         self.download_bgc()
-        self.download_tradition()
+        df_temp = self.download_tradition()
+        self.TRADITION_result = tradition_calc(df_temp)
         self.download_prebontullet()
         self.download_gfi()
 
@@ -185,7 +191,6 @@ if __name__ == '__main__':
 
     n.download_all()
 
-
-
+    print(f'n.TRADITION_result\n {n.TRADITION_result}')
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
