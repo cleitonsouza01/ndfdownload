@@ -1,6 +1,6 @@
 # NDF download manager
 import pathlib
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import os
 import sys
 
@@ -10,8 +10,8 @@ import holidays
 import requests as requests
 from loguru import logger
 
-from datamining import tradition_calc
-from table import Table
+from ndf.datamining import tradition_calc
+from ndf.table import Table
 from scrapy.http import TextResponse
 
 logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="DEBUG")
